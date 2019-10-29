@@ -1,33 +1,51 @@
+'use strict';
+
 const store = {
   items: [
-    { id: cuid(), name: 'apples', checked: false },
-    { id: cuid(), name: 'oranges', checked: false },
-    { id: cuid(), name: 'milk', checked: true },
-    { id: cuid(), name: 'bread', checked: false }
+    { id: cuid(), name: 'apples', checked: false, editing: false },
+    { id: cuid(), name: 'oranges', checked: false, editing: false },
+    { id: cuid(), name: 'milk', checked: true, editing: false },
+    { id: cuid(), name: 'bread', checked: false, editing: false }
   ],
   hideCheckedItems: false
 };
 
 const generateItemElement = function (item) {
-  let itemTitle = `<span class='shopping-item shopping-item__checked'>${item.name}</span>`;
-  if (!item.checked) {
-    itemTitle = `
-     <span class='shopping-item'>${item.name}</span>
-    `;
-  }
+  
+  if (!item.editing) {
+    let itemTitle = `<span class='shopping-item shopping-item__checked'>${item.name}</span>`;
+    
+    if (!item.checked) {
+      itemTitle = `
+      <span class='shopping-item'>${item.name}</span>
+      `;
+    }
 
-  return `
-    <li class='js-item-element' data-item-id='${item.id}'>
-      ${itemTitle}
-      <div class='shopping-item-controls'>
-        <button class='shopping-item-toggle js-item-toggle'>
-          <span class='button-label'>check</span>
-        </button>
-        <button class='shopping-item-delete js-item-delete'>
-          <span class='button-label'>delete</span>
-        </button>
-      </div>
-    </li>`;
+    return `
+      <li class='js-item-element' data-item-id='${item.id}'>
+        ${itemTitle}
+        <div class='shopping-item-controls'>
+          <button class='shopping-item-toggle js-item-toggle'>
+            <span class='button-label'>check</span>
+          </button>
+          <button class='shopping-item-edit js-item-edit'>
+            <span class='button-label'>edit</span>
+          </button>
+          <button class='shopping-item-delete js-item-delete'>
+            <span class='button-label'>delete</span>
+          </button>
+        </div>
+      </li>`;
+  } else {
+    return `
+      <li class='js-item-element' data-item-id='${item.id}'>
+        <form id="js-shopping-item-edit-form">
+          <label for="shopping-item-edit"></label>
+          <input type="text" name="shopping-item-edit" class="js-shopping-item-edit-entry" value='${item.name}'>
+          <button type="submit" class='js-shopping-item-edit-entry-button'>Save edit</button>
+        </form>
+      </li>`;
+  }
 };
 
 const generateShoppingItemsString = function (shoppingList) {
@@ -63,7 +81,7 @@ const render = function () {
 };
 
 const addItemToShoppingList = function (itemName) {
-  store.items.push({ id: cuid(), name: itemName, checked: false });
+  store.items.push({ id: cuid(), name: itemName, checked: false, editing: false });
 };
 
 const handleNewItemSubmit = function () {
@@ -145,6 +163,60 @@ const handleToggleFilterClick = function () {
   });
 };
 
+const toggleEditingListItem = function (id) {
+  const foundItem = store.items.find(item => item.id === id);
+  foundItem.editing = !foundItem.editing;
+}; 
+
+const disableButtonsWhileEditing = function() {
+  $('button').attr('disabled', true);
+  $('.js-filter-checked').attr('disabled', true);
+  $('.js-shopping-item-edit-entry-button').attr('disabled', false);
+}
+
+const enableButtonsAfterEditing = function() {
+  $('button').attr('disabled', false);
+  $('.js-filter-checked').attr('disabled', false);
+}
+
+const handleEditItemClicked = function() {
+  $('.js-shopping-list').on('click', '.js-item-edit', event => {
+    const id = getItemIdFromElement(event.currentTarget);
+    toggleEditingListItem(id);
+    render();
+    
+    //disable buttons for all other actions until change is saved
+    disableButtonsWhileEditing();
+    
+    //place focus onto the input field
+    $('.js-shopping-item-edit-entry').focus();
+  });
+};
+
+const editItemNameInStore = function(newName) {
+  const foundItem = store.items.find(item => item.editing === true);
+  foundItem.name = newName;
+}
+
+const handleEditSubmit = function() {
+  //set up event handler
+  $('.js-shopping-list').on('submit', '#js-shopping-item-edit-form', event => {
+    event.preventDefault();
+    const editedItemName = $('.js-shopping-item-edit-entry').val();
+    const id = getItemIdFromElement(event.currentTarget);
+    
+    //update STORE'S item.name with new value
+    editItemNameInStore(editedItemName);
+    
+    //Set List Item's Editing property to false
+    toggleEditingListItem(id);
+
+    //reenable adding items and hiding/unhiding items
+    enableButtonsAfterEditing();
+    render();
+  });
+};
+
 /**
  * This function will be our callback when the
  * page loads. It is responsible for initially 
@@ -160,7 +232,27 @@ const handleShoppingList = function () {
   handleItemCheckClicked();
   handleDeleteItemClicked();
   handleToggleFilterClick();
+  handleEditItemClicked();
+  handleEditSubmit();
 };
 
 // when the page loads, call `handleShoppingList`
 $(handleShoppingList);
+
+
+//TEMP
+
+//<input type="text" name="shopping-list-entry" class="js-shopping-list-entry" value="PREVIOUS VALUE">
+
+//<div class="shopping-item-controls">
+// <button class="shopping-item-toggle js-item-toggle">
+// <span class="button-label">check</span>
+// </button>
+// <button class="shopping-item-delete js-item-edit">
+// <span class="button-label">edit</span>
+// </button>
+
+// <button class="shopping-item-delete js-item-delete">
+// <span class="button-label">delete</span>
+// </button>
+// </div>
